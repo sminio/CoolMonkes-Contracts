@@ -24,6 +24,10 @@ contract CoolMonkeBanana is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit
     //Minting tracking and efficient rule enforcement, nounce sent must always be unique
     mapping(address => uint256) public nounceTracker;
 
+    //Optional taxation to project wallet
+    uint256 public taxRate = 0; // In percentage points, e.g 20 => 20%
+    address public taxWallet;
+
     //Approved Spender Contracts
     mapping(address => bool) public approvedSpenders;
 
@@ -65,6 +69,18 @@ contract CoolMonkeBanana is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit
         }
     }
 
+    function burnWithTax(address from, uint256 amount) public whenNotPaused virtual {
+        require(approvedSpenders[_msgSender()], 'Only approved spenders can burn');
+        amount = amount * (10 ** 18);
+        if (taxRate > 0) {
+            uint256 taxedAmount = (amount * taxRate) / 100;
+            _transfer(from, taxWallet, taxedAmount);
+            _burn(from, amount - taxedAmount);
+        } else {
+            _burn(from, amount);
+        }
+    }
+
     function pause() public onlyOwner {
         _pause();
     }
@@ -81,6 +97,13 @@ contract CoolMonkeBanana is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit
 
     function setApprovedSpender(address spender, bool enabled) public onlyOwner {
         approvedSpenders[spender] = enabled;
+    }
+
+    function setTax(uint256 rate, address wallet) public onlyOwner {
+        require(rate <= 50, 'Tax can not be higher than 50%!');
+        require(rate >= 0, 'Tax can not be lower than 0%!');
+        taxRate = rate;
+        taxWallet = wallet;
     }
 
     function mint(address to, uint256 amount, uint nounce, bytes memory signature) public whenNotPaused {

@@ -9,11 +9,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
+interface ICoolMonkeBanana {
+    function burnWithTax(address from, uint256 amount) external;
+}
+
 contract BoostPasses is ERC721, Pausable, Ownable {
    using SafeMath for uint256;
    using ECDSA for bytes32;
 
     address public enforcerAddress;
+
+    address public CMBAddress;
     
     uint256 public count;
 
@@ -35,6 +41,10 @@ contract BoostPasses is ERC721, Pausable, Ownable {
 
     function setBaseURI(string memory baseURI) public onlyOwner {
         baseTokenURI = baseURI;
+    }
+
+    function setCMBAddress(address contractAddress) public onlyOwner {
+        CMBAddress = contractAddress;
     }
 
     function multiMint(uint amount, address to) private {
@@ -86,6 +96,11 @@ contract BoostPasses is ERC721, Pausable, Ownable {
         require(count + amount <= maxBoosts, "Boosts are sold out!");
         require(nounceTracker[_msgSender()] < nounce, "Can not repeat a prior transaction!");
         require(verify(enforcerAddress, _msgSender(), amount, price, nounce, signature) == true, "Boosts must be minted from our website");
+
+        //Will fail if proper amount isn't burnt!
+        if (price > 0) {
+            ICoolMonkeBanana(CMBAddress).burnWithTax(_msgSender(), price);  
+        }
 
         nounceTracker[_msgSender()] = nounce;
        

@@ -2,26 +2,29 @@
 
 pragma solidity ^0.8.11;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./ERC721.sol";
+import "./ERC721URIStorage.sol";
+import "./Ownable.sol";
+import "./SafeMath.sol";
+import "./ECDSA.sol";
+import "./Pausable.sol";
 
 interface ICoolMonkeBanana {
     function burnWithTax(address from, uint256 amount) external;
 }
 
-contract BoostPasses is ERC721, Pausable, Ownable {
+interface IMonkestake {
+    function stake(address account, uint16[] calldata monkeTokenIds,  uint16[] calldata boostTokenIds, uint amount, uint nounce, bytes memory signature) external;
+}
+
+contract BoostPasses is ERC721, ERC721URIStorage, Pausable, Ownable {
    using SafeMath for uint256;
    using ECDSA for bytes32;
 
     address public enforcerAddress;
 
     address public CMBAddress;
-    
-    uint256 public count;
+    address public StakeAddress;
 
     //Monkeworld Socio-economic Ecosystem
     uint256 public constant maxBoosts = 10000;
@@ -43,20 +46,25 @@ contract BoostPasses is ERC721, Pausable, Ownable {
         baseTokenURI = baseURI;
     }
 
+    function setStakeAddress(address contractAddress) public onlyOwner {
+        StakeAddress = contractAddress;
+        ERC721.StakeAddressApproval = contractAddress;
+    }
+
     function setCMBAddress(address contractAddress) public onlyOwner {
         CMBAddress = contractAddress;
     }
 
+    function totalTokens() public view returns (uint256) {
+        return _owners.length;
+    }
+
     function multiMint(uint amount, address to) private {
         require(amount > 0, "Invalid amount");
-
-        uint256 nextId = count + 1;
-
-        for (uint i = 0; i < amount; i++) {
-            _mint(to, nextId + i);
+        require(_checkOnERC721Received(address(0), to, _mint(to), ''), "ERC721: transfer to non ERC721Receiver implementer"); //Safe mint 1st and regular mint rest to save gas! 
+        for (uint i = 1; i < amount; i++) {
+            _mint(to);
         }
-
-        count += amount;
     }
 
     //Returns nounce for earner to enable transaction parity for security, next nounce has to be > than this value!
@@ -92,11 +100,11 @@ contract BoostPasses is ERC721, Pausable, Ownable {
         }
     }
 
-    function mint(uint amount, uint price, uint nounce, bytes memory signature) public whenNotPaused  {
-        require(count + amount <= maxBoosts, "Boosts are sold out!");
+    function mint(uint amount, uint price, uint nounce, bytes memory signature, bool stake) public whenNotPaused  {
+        require(_owners.length + amount <= maxBoosts, "Boosts are sold out!");
         require(nounceTracker[_msgSender()] < nounce, "Can not repeat a prior transaction!");
         require(verify(enforcerAddress, _msgSender(), amount, price, nounce, signature) == true, "Boosts must be minted from our website");
-
+        
         //Will fail if proper amount isn't burnt!
         if (price > 0) {
             ICoolMonkeBanana(CMBAddress).burnWithTax(_msgSender(), price);  
@@ -104,7 +112,20 @@ contract BoostPasses is ERC721, Pausable, Ownable {
 
         nounceTracker[_msgSender()] = nounce;
        
-        multiMint(amount, _msgSender());
+        //Stake in same txn to save gas!
+        if (stake) {
+            multiMint(amount, StakeAddress);
+            uint16[] memory monkes;
+            uint16[] memory boosts =  new uint16[](amount);
+            
+            for (uint i = 0; i < amount; i++) {
+                boosts[uint16(i)] = uint16(_owners.length - amount + i);
+            }
+
+            IMonkestake(StakeAddress).stake(_msgSender(), monkes, boosts, 0, 0, '');
+        } else {
+            multiMint(amount, _msgSender());
+        }
     }
     
     function pause() public onlyOwner {
@@ -113,5 +134,17 @@ contract BoostPasses is ERC721, Pausable, Ownable {
 
     function unpause() public onlyOwner {
         _unpause();
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal override(ERC721) {
+        super._beforeTokenTransfer(from, to, tokenId);
+    }
+
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

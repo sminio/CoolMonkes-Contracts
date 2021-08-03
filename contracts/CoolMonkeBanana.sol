@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.11;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./ERC20.sol";
+import "./ERC20Burnable.sol";
+import "./draft-ERC20Permit.sol";
+import "./Ownable.sol";
+import "./SafeMath.sol";
+import "./ECDSA.sol";
+import "./Pausable.sol";
 
 contract CoolMonkeBanana is ERC20, ERC20Burnable, Pausable, Ownable, ERC20Permit {
     using SafeMath for uint256;

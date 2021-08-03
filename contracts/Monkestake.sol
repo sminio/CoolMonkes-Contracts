@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.11;
 
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./Pausable.sol";
+import "./Ownable.sol";
+import "./IERC721Receiver.sol";
+import "./ECDSA.sol";
+import "./SafeMath.sol";
 
 interface IMonkes {
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) external;

@@ -17,6 +17,19 @@ task("accounts", "Prints the list of accounts", async () => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.11",
-};
-
+  networks: {
+    mainnet: {
+      url: "https://mainnet.infura.io/v3/b6bf7d3508c941499b10025c0776eaf8",
+      accounts: [""]
+    }
+  },
+  solidity: {
+    version: "0.8.11",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
+}
